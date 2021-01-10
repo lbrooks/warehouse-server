@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            .item-box {
+                width: 100%;
+                padding: 1rem;
+            }
+            .item {
+                display: grid;
+                grid-template: 1fr / 10% 1fr 10% 10% ;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+
+                border: 1px solid black;
+
+                align-items: center;
+                justify-content: center;
+            }
+            .item-quantity {
+                text-align: center;
+                grid-row: span 2;
+                font-weight: 600;
+            }
+            .item-name {
+                grid-row: span 2;
+            }
+            form {
+                margin: 0;
+                padding: 0.5rem 1rem;
+                width: 100%;
+            }
+
+            input[type="submit"] {
+                display: block;
+                width: 100%;
+                margin: 0;
+                padding: 0 1rem;
+                border: 3px solid black;
+                border-radius: 0.5rem;
+                font-size: 2rem;
+                line-height: 2;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>
+            {{ .title }}
+        </h1>
+        
+        <div>
+            <form action="/action/item/incr" method="get">
+                <input type="text" name="barcode"/>
+                <input type="text" name="name"/>
+                <input type="submit" name="incr" value="+" />
+            </form>
+        </div>
+
+        <div class="item-box">
+            {{ range .items }}
+                <div class="item">
+                    <div class="item-quantity">{{ .Quantity }}</div>
+                    <div class="item-name">{{ .Name }}</div>
+                    <form action="/action/item/incr" method="get">
+                        <input type="hidden" name="name" value="{{ .Name }}"/>
+                        <input type="submit" name="incr" class="incr" value="+" />
+                    </form>
+                    <form action="/action/item/decr" method="get">
+                        <input type="hidden" name="name" value="{{ .Name }}"/>
+                        <input type="submit" name="decr" class="decr" value="-" />
+                    </form>
+                </div>
+            {{ end }}
+        </div>
+    </body>
+</html>
