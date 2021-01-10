@@ -40,11 +40,31 @@ func (m *memStore) initialize(ctx context.Context) {
 	sc, span := tracing.CreateSpan(ctx, "item-dao", "init")
 	defer span.End()
 
-	m.AdjustQuantity(sc, "1", "Toilet-Paper", 1)
-	m.AdjustQuantity(sc, "2", "Toilet-Paper", 1)
-	m.AdjustQuantity(sc, "1", "Paper-Towels", 1)
-	m.AdjustQuantity(sc, "3", "Ziploc-Gallon", 1)
-	m.AdjustQuantity(sc, "4", "Ziploc-Quart", 1)
+	err := m.AdjustQuantity(sc, "1", "Toilet-Paper", 1)
+	if err != nil {
+		span.RecordError(err)
+		return
+	}
+	err = m.AdjustQuantity(sc, "2", "Toilet-Paper", 1)
+	if err != nil {
+		span.RecordError(err)
+		return
+	}
+	err = m.AdjustQuantity(sc, "1", "Paper-Towels", 1)
+	if err != nil {
+		span.RecordError(err)
+		return
+	}
+	err = m.AdjustQuantity(sc, "3", "Ziploc-Gallon", 1)
+	if err != nil {
+		span.RecordError(err)
+		return
+	}
+	err = m.AdjustQuantity(sc, "4", "Ziploc-Quart", 1)
+	if err != nil {
+		span.RecordError(err)
+		return
+	}
 	span.AddEvent("Mock Data Initalized")
 }
 

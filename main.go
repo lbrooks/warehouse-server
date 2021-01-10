@@ -4,6 +4,7 @@ import (
 	"context"
 	"main/item"
 	"main/utils/tracing"
+	"os"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,5 +20,8 @@ func main() {
 
 	itemService := item.NewService(item.NewDaoInMemory(context.Background(), true))
 	item.AddRoutes(r, apiRoutes, actionRoutes, itemService)
-	r.Run() // listen and serve on 0.0.0.0:8080
+	err := r.Run() // listen and serve on 0.0.0.0:8080
+	if err != nil {
+		os.Exit(1)
+	}
 }
