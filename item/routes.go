@@ -9,11 +9,6 @@ import (
 	"go.opentelemetry.io/otel/label"
 )
 
-type adjustJSON struct {
-	Barcode string `form:"barcode"`
-	Name    string `form:"name" binding:"required"`
-}
-
 // AddRoutes Add Testing Routes
 func AddRoutes(api *gin.RouterGroup, s Service) {
 	addAPIRoutes(api.Group("item"), s)
@@ -24,43 +19,23 @@ func addAPIRoutes(rg *gin.RouterGroup, s Service) {
 		return s.GetAllItems(spanCtx)
 	}))
 
-	rg.POST("incr", tracing.JSONRoute("routes-item", "increment", func(spanCtx context.Context, ginCtx *gin.Context) (interface{}, error) {
+	rg.POST("update", tracing.JSONRoute("routes-item", "update", func(spanCtx context.Context, ginCtx *gin.Context) (interface{}, error) {
 		span := tracing.GetSpan(spanCtx)
 
-		var reqBody adjustJSON
-		err := ginCtx.Bind(&reqBody)
+		var item Item
+		err := ginCtx.Bind(&item)
 		if err != nil {
 			span.RecordError(err)
 			return nil, err
 		}
 
 		{
-			reqJSON, _ := json.Marshal(reqBody)
+			reqJSON, _ := json.Marshal(item)
 			span.SetAttributes(
 				label.String("request.body", string(reqJSON)),
 			)
 		}
 
-		return s.AdjustQuantity(spanCtx, reqBody.Barcode, reqBody.Name, 1)
-	}))
-
-	rg.POST("decr", tracing.JSONRoute("routes-item", "decrement", func(spanCtx context.Context, ginCtx *gin.Context) (interface{}, error) {
-		span := tracing.GetSpan(spanCtx)
-
-		var reqBody adjustJSON
-		err := ginCtx.Bind(&reqBody)
-		if err != nil {
-			span.RecordError(err)
-			return nil, err
-		}
-
-		{
-			reqJSON, _ := json.Marshal(reqBody)
-			span.SetAttributes(
-				label.String("request.body", string(reqJSON)),
-			)
-		}
-
-		return s.AdjustQuantity(spanCtx, reqBody.Barcode, reqBody.Name, -1)
+		return s.Update(spanCtx, item)
 	}))
 }

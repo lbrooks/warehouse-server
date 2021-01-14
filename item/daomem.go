@@ -3,16 +3,13 @@ package item
 import (
 	"context"
 	"errors"
-	"main/utils/slice"
 	"main/utils/tracing"
-	"sort"
 
 	"go.opentelemetry.io/otel/label"
 )
 
 type memStore struct {
-	barcodeToItemName  map[string][]string
-	itemNameToQuantity map[string]int
+	barcodeToNameToQuantity map[string]map[string]int
 }
 
 // NewDaoInMemory Create In Memory Storage
@@ -23,8 +20,7 @@ func NewDaoInMemory(ctx context.Context, initalizeData bool) Dao {
 	span.SetAttributes(label.Bool("initializeData", initalizeData))
 
 	m := &memStore{
-		barcodeToItemName:  make(map[string][]string),
-		itemNameToQuantity: make(map[string]int),
+		barcodeToNameToQuantity: make(map[string]map[string]int),
 	}
 	span.AddEvent("Created Store")
 
@@ -40,27 +36,27 @@ func (m *memStore) initialize(ctx context.Context) {
 	sc, span := tracing.CreateSpan(ctx, "item-dao", "init")
 	defer span.End()
 
-	err := m.AdjustQuantity(sc, "1", "Toilet-Paper", 1)
+	err := m.Update(sc, Item{Barcode: "1", Name: "Toilet-Paper", Quantity: 1})
 	if err != nil {
 		span.RecordError(err)
 		return
 	}
-	err = m.AdjustQuantity(sc, "2", "Toilet-Paper", 1)
+	err = m.Update(sc, Item{Barcode: "2", Name: "Toilet-Paper", Quantity: 1})
 	if err != nil {
 		span.RecordError(err)
 		return
 	}
-	err = m.AdjustQuantity(sc, "1", "Paper-Towels", 1)
+	err = m.Update(sc, Item{Barcode: "1", Name: "Paper-Towels", Quantity: 1})
 	if err != nil {
 		span.RecordError(err)
 		return
 	}
-	err = m.AdjustQuantity(sc, "3", "Ziploc-Gallon", 1)
+	err = m.Update(sc, Item{Barcode: "3", Name: "Ziploc-Gallon", Quantity: 1})
 	if err != nil {
 		span.RecordError(err)
 		return
 	}
-	err = m.AdjustQuantity(sc, "4", "Ziploc-Quart", 1)
+	err = m.Update(sc, Item{Barcode: "4", Name: "Ziploc-Quart", Quantity: 3})
 	if err != nil {
 		span.RecordError(err)
 		return
@@ -72,14 +68,12 @@ func (m *memStore) GetAllItems(ctx context.Context) (items []Item) {
 	_, span := tracing.CreateSpan(ctx, "item-dao", "get-all")
 	defer span.End()
 
-	for k, v := range m.itemNameToQuantity {
-		items = append(items, Item{Name: k, Quantity: v})
+	for barcode, nTq := range m.barcodeToNameToQuantity {
+		for name, quantity := range nTq {
+			items = append(items, Item{Barcode: barcode, Name: name, Quantity: quantity})
+		}
 	}
-	span.AddEvent("Added Inventory")
-
-	sort.Slice(items, func(i, j int) bool {
-		return items[i].Name < items[j].Name
-	})
+	SortItems(items)
 
 	return
 }
@@ -88,54 +82,30 @@ func (m *memStore) GetItemsForBarcode(ctx context.Context, barcode string) (item
 	_, span := tracing.CreateSpan(ctx, "item-dao", "get-barcode")
 	defer span.End()
 
-	names, hasBarcode := m.barcodeToItemName[barcode]
+	nTq, hasBarcode := m.barcodeToNameToQuantity[barcode]
 	if !hasBarcode {
 		err = errors.New("barcode not found")
 		span.RecordError(err)
 		return
 	}
 
-	for _, name := range names {
-		quantity, hasName := m.itemNameToQuantity[name]
-		if !hasName {
-			err = errors.New("name not found")
-			span.RecordError(err)
-			return
-		}
-
-		items = append(items, Item{Name: name, Quantity: quantity})
+	for name, quantity := range nTq {
+		items = append(items, Item{Barcode: barcode, Name: name, Quantity: quantity})
 	}
+	SortItems(items)
 
 	return
 }
 
-func (m *memStore) AdjustQuantity(ctx context.Context, barcode, name string, add int) error {
+func (m *memStore) Update(ctx context.Context, item Item) error {
 	_, span := tracing.CreateSpan(ctx, "item-dao", "adjust-quantity")
 	defer span.End()
 
-	if name == "" {
-		err := errors.New("missing a name")
-		span.RecordError(err)
-		return err
+	if _, hasBarcode := m.barcodeToNameToQuantity[item.Barcode]; !hasBarcode {
+		m.barcodeToNameToQuantity[item.Barcode] = make(map[string]int)
 	}
 
-	if barcode != "" {
-		if names, hasBarcode := m.barcodeToItemName[barcode]; !hasBarcode {
-			m.barcodeToItemName[barcode] = []string{name}
-		} else if !slice.Contains(names, name) {
-			m.barcodeToItemName[barcode] = append(m.barcodeToItemName[barcode], name)
-		}
-	}
-
-	if _, hasQuantity := m.itemNameToQuantity[name]; !hasQuantity {
-		m.itemNameToQuantity[name] = 0
-	}
-
-	m.itemNameToQuantity[name] += add
-
-	if m.itemNameToQuantity[name] < 0 {
-		m.itemNameToQuantity[name] = 0
-	}
+	m.barcodeToNameToQuantity[item.Barcode][item.Name] = item.Quantity
 
 	return nil
 }

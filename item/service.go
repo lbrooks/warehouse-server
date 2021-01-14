@@ -11,7 +11,7 @@ import (
 type Service interface {
 	GetAllItems(ctx context.Context) ([]Item, error)
 	GetItemsForBarcode(ctx context.Context, barcode string) ([]Item, error)
-	AdjustQuantity(ctx context.Context, barcode, name string, count int) (string, error)
+	Update(ctx context.Context, item Item) (string, error)
 }
 
 type service struct {
@@ -39,17 +39,17 @@ func (s *service) GetItemsForBarcode(ctx context.Context, barcode string) ([]Ite
 	return s.dao.GetItemsForBarcode(sc, barcode)
 }
 
-func (s *service) AdjustQuantity(ctx context.Context, barcode, name string, count int) (string, error) {
-	sc, span := tracing.CreateSpan(ctx, "item-service", "adjust-quantity")
+func (s *service) Update(ctx context.Context, item Item) (string, error) {
+	sc, span := tracing.CreateSpan(ctx, "item-service", "update")
 	defer span.End()
 
 	span.SetAttributes(
-		label.String("barcode", barcode),
-		label.String("name", name),
-		label.Int("count", count),
+		label.String("barcode", item.Barcode),
+		label.String("name", item.Name),
+		label.Int("quantity", item.Quantity),
 	)
 
-	err := s.dao.AdjustQuantity(sc, barcode, name, count)
+	err := s.dao.Update(sc, item)
 	if err != nil {
 		return "", err
 	}
