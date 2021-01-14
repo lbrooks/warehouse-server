@@ -97,3 +97,8 @@ func CreateSpan(ctx context.Context, tracerName, operationName string) (context.
 	tr := otel.Tracer(tracerName)
 	return tr.Start(ctx, fmt.Sprintf("%s-%s", tracerName, operationName))
 }
+
+// GetSpan Gets the current Tracing Span from context
+func GetSpan(ctx context.Context) oteltrace.Span {
+	return oteltrace.SpanFromContext(ctx)
+}

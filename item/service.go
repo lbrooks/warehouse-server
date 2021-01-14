@@ -3,6 +3,8 @@ package item
 import (
 	"context"
 	"main/utils/tracing"
+
+	"go.opentelemetry.io/otel/label"
 )
 
 // Service Item Storage Service
@@ -40,6 +42,12 @@ func (s *service) GetItemsForBarcode(ctx context.Context, barcode string) ([]Ite
 func (s *service) AdjustQuantity(ctx context.Context, barcode, name string, count int) (string, error) {
 	sc, span := tracing.CreateSpan(ctx, "item-service", "adjust-quantity")
 	defer span.End()
+
+	span.SetAttributes(
+		label.String("barcode", barcode),
+		label.String("name", name),
+		label.Int("count", count),
+	)
 
 	err := s.dao.AdjustQuantity(sc, barcode, name, count)
 	if err != nil {
