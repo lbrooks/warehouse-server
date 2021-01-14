@@ -45,9 +45,22 @@ func addAPIRoutes(rg *gin.RouterGroup, s Service) {
 	}))
 
 	rg.POST("decr", tracing.JSONRoute("routes-item", "decrement", func(spanCtx context.Context, ginCtx *gin.Context) (interface{}, error) {
-		var json adjustJSON
-		ginCtx.Bind(&json)
+		span := tracing.GetSpan(spanCtx)
 
-		return s.AdjustQuantity(spanCtx, json.Barcode, json.Name, -1)
+		var reqBody adjustJSON
+		err := ginCtx.Bind(&reqBody)
+		if err != nil {
+			span.RecordError(err)
+			return nil, err
+		}
+
+		{
+			reqJSON, _ := json.Marshal(reqBody)
+			span.SetAttributes(
+				label.String("request.body", string(reqJSON)),
+			)
+		}
+
+		return s.AdjustQuantity(spanCtx, reqBody.Barcode, reqBody.Name, -1)
 	}))
 }
