@@ -1,11 +1,12 @@
-package main
+package cmd
 
 import (
 	"context"
-	"main/item"
-	"main/utils/tracing"
 	"os"
 	"time"
+
+	"github.com/lbrooks/inventory/server/dao"
+	"github.com/lbrooks/inventory/server/tracing"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -17,7 +18,7 @@ func main() {
 
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5000"},
+		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"PUT", "PATCH", "OPTIONS", "GET", "POST", "DELETE"},
 		AllowHeaders:     []string{"Origin", "Content-Type"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -30,7 +31,7 @@ func main() {
 
 	apiRoutes := r.Group("api")
 
-	itemService := item.NewService(item.NewDaoInMemory(context.Background(), true))
+	itemService := item.NewService(dao.NewDaoInMemory(context.Background(), true))
 	item.AddRoutes(apiRoutes, itemService)
 
 	err := r.Run() // listen and serve on 0.0.0.0:8080

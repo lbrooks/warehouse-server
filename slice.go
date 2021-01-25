@@ -1,4 +1,4 @@
-package slice
+package server
 
 func Contains(slice []string, value string) bool {
 	for _, v := range slice {

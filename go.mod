@@ -1,4 +1,4 @@
-module main
+module github.com/lbrooks/inventory/server
 
 go 1.15
 

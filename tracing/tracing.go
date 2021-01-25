@@ -15,19 +15,15 @@ import (
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
-const jaegerEndpoint = "http://localhost:14268/api/traces"
-const jaegerService = "games-server"
-const jaegerHost = "chronos"
-
 // Initialize creates a new trace provider instance and registers it as global trace provider.
 func Initialize() func() {
 	// Create and install Jaeger export pipeline.
 	flush, err := jaeger.InstallNewPipeline(
-		jaeger.WithCollectorEndpoint(jaegerEndpoint),
+		jaeger.WithCollectorEndpoint(getEndpoint()),
 		jaeger.WithProcess(jaeger.Process{
-			ServiceName: jaegerService,
+			ServiceName: getService(),
 			Tags: []label.KeyValue{
-				label.String("host", jaegerHost),
+				label.String("host", getHost()),
 			},
 		}),
 		jaeger.WithSDK(&sdktrace.Config{DefaultSampler: sdktrace.AlwaysSample()}),
@@ -36,13 +32,6 @@ func Initialize() func() {
 		log.Fatal(err)
 	}
 	return flush
-}
-
-func logRequestsToSpan(span oteltrace.Span, request *http.Request) {
-	for k, v := range request.Header {
-		span.SetAttributes(label.String("request.header."+k, strings.Join(v, " | ")))
-	}
-	span.SetAttributes(label.String("request.query", request.URL.RawQuery))
 }
 
 // JSONRoute wrapper to trace route
@@ -66,30 +55,11 @@ func JSONRoute(tracerName, operationName string, handler func(spanCtx context.Co
 	}
 }
 
-// HTMLRoute wrapper to trace route
-func HTMLRoute(tracerName, operationName string, handler func(spanCtx context.Context, ginCtx *gin.Context) (string, interface{})) func(*gin.Context) {
-	return func(c *gin.Context) {
-		sc, span := CreateSpan(c, tracerName, operationName)
-		defer span.End()
-		logRequestsToSpan(span, c.Request)
-
-		template, data := handler(sc, c)
-
-		c.HTML(http.StatusOK, template, data)
+func logRequestsToSpan(span oteltrace.Span, request *http.Request) {
+	for k, v := range request.Header {
+		span.SetAttributes(label.String("request.header."+k, strings.Join(v, " | ")))
 	}
-}
-
-// RedirectRoute wrapper to trace route
-func RedirectRoute(tracerName, operationName string, handler func(spanCtx context.Context, ginCtx *gin.Context) string) func(*gin.Context) {
-	return func(c *gin.Context) {
-		sc, span := CreateSpan(c, tracerName, operationName)
-		defer span.End()
-		logRequestsToSpan(span, c.Request)
-
-		url := handler(sc, c)
-
-		c.Redirect(http.StatusTemporaryRedirect, url)
-	}
+	span.SetAttributes(label.String("request.query", request.URL.RawQuery))
 }
 
 // CreateSpan Create Tracing Span from context
