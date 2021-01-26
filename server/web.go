@@ -1,21 +1,14 @@
-package cmd
+package server
 
 import (
-	"context"
-	"os"
 	"time"
-
-	"github.com/lbrooks/inventory/server/dao"
-	"github.com/lbrooks/inventory/server/tracing"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
-func main() {
-	flush := tracing.Initialize()
-	defer flush()
-
+// NewWebServer create a new web server
+func NewWebServer() *gin.Engine {
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
@@ -29,13 +22,5 @@ func main() {
 		MaxAge: 12 * time.Hour,
 	}))
 
-	apiRoutes := r.Group("api")
-
-	itemService := item.NewService(dao.NewDaoInMemory(context.Background(), true))
-	item.AddRoutes(apiRoutes, itemService)
-
-	err := r.Run() // listen and serve on 0.0.0.0:8080
-	if err != nil {
-		os.Exit(1)
-	}
+	return r
 }

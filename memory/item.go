@@ -4,29 +4,24 @@ import (
 	"context"
 	"fmt"
 
-	"main/inventory"
-	"main/utils/booleans"
-	"main/utils/tracing"
+	"github.com/lbrooks/warehouse"
 
 	"go.opentelemetry.io/otel/label"
 )
 
-type memStore struct {
-	items []*inventory.Item
+type itemService struct {
+	items []*warehouse.Item
 }
 
-func (m *memStore) findItemsMatching(ctx context.Context, barcode, name, brand string) (items []*inventory.Item) {
-	_, span := tracing.CreateSpan(ctx, "item.daomem.memStore", "findItemsMatching")
+func (m *itemService) findItemsMatching(ctx context.Context, filter warehouse.Item) (items []*warehouse.Item) {
+	_, span := warehouse.CreateSpan(ctx, "itemService", "findItemsMatching")
 	defer span.End()
 
-	ignoreEmpty := booleans.IsBlank(barcode) && booleans.IsBlank(name) && booleans.IsBlank(brand)
-	items = make([]*inventory.Item, 0)
-	for _, v := range m.items {
-		barcodeMatch := booleans.IsBlank(barcode) || v.Barcode == barcode
-		nameMatch := booleans.IsBlank(name) || v.Name == name
-		brandMatch := booleans.IsBlank(brand) || v.Brand == brand
+	ignoreEmpty := filter.Barcode == "" && filter.Name == "" && filter.Brand == ""
 
-		if barcodeMatch && nameMatch && brandMatch {
+	items = make([]*warehouse.Item, 0)
+	for _, v := range m.items {
+		if filter.Matches(v) {
 			if !ignoreEmpty || v.Quantity > 0 {
 				items = append(items, v)
 			}
@@ -35,31 +30,31 @@ func (m *memStore) findItemsMatching(ctx context.Context, barcode, name, brand s
 	return
 }
 
-func (m *memStore) initialize(ctx context.Context) {
-	sc, span := tracing.CreateSpan(ctx, "item-dao", "initialize")
+func (m *itemService) initialize(ctx context.Context) {
+	sc, span := warehouse.CreateSpan(ctx, "itemService", "initialize")
 	defer span.End()
 
-	err := m.Update(sc, inventory.Item{Barcode: "1", Name: "Toilet Paper", Brand: "Charmin", Quantity: 1})
+	_, err := m.Update(sc, warehouse.Item{Barcode: "1", Name: "Toilet Paper", Brand: "Charmin", Quantity: 1})
 	if err != nil {
 		span.RecordError(err)
 		return
 	}
-	err = m.Update(sc, inventory.Item{Barcode: "2", Name: "Toilet Paper", Brand: "Sandpaper", Quantity: 1})
+	_, err = m.Update(sc, warehouse.Item{Barcode: "2", Name: "Toilet Paper", Brand: "Sandpaper", Quantity: 1})
 	if err != nil {
 		span.RecordError(err)
 		return
 	}
-	err = m.Update(sc, inventory.Item{Barcode: "1", Name: "Paper Towels", Brand: "Bounty", Quantity: 1})
+	_, err = m.Update(sc, warehouse.Item{Barcode: "1", Name: "Paper Towels", Brand: "Bounty", Quantity: 1})
 	if err != nil {
 		span.RecordError(err)
 		return
 	}
-	err = m.Update(sc, inventory.Item{Barcode: "3", Name: "Gallon Bag", Brand: "Ziploc", Quantity: 1})
+	_, err = m.Update(sc, warehouse.Item{Barcode: "3", Name: "Gallon Bag", Brand: "Ziploc", Quantity: 1})
 	if err != nil {
 		span.RecordError(err)
 		return
 	}
-	err = m.Update(sc, inventory.Item{Barcode: "4", Name: "Quart Bag", Brand: "Ziploc", Quantity: 3})
+	_, err = m.Update(sc, warehouse.Item{Barcode: "4", Name: "Quart Bag", Brand: "Ziploc", Quantity: 3})
 	if err != nil {
 		span.RecordError(err)
 		return
@@ -67,15 +62,15 @@ func (m *memStore) initialize(ctx context.Context) {
 	span.AddEvent("Mock Data Initalized")
 }
 
-// NewDaoInMemory Create In Memory Storage
-func NewDaoInMemory(ctx context.Context, initalizeData bool) Dao {
-	sc, span := tracing.CreateSpan(ctx, "item.dao.daomem", "NewDaoInMemory")
+// NewItemService Create In Memory Storage
+func NewItemService(ctx context.Context, initalizeData bool) warehouse.ItemService {
+	sc, span := warehouse.CreateSpan(ctx, "itemService", "NewItemService")
 	defer span.End()
 
 	span.SetAttributes(label.Bool("initializeData", initalizeData))
 
-	m := &memStore{
-		items: make([]*inventory.Item, 0),
+	m := &itemService{
+		items: make([]*warehouse.Item, 0),
 	}
 	span.AddEvent("Created Store")
 
@@ -87,8 +82,8 @@ func NewDaoInMemory(ctx context.Context, initalizeData bool) Dao {
 	return m
 }
 
-func (m *memStore) GetCounts(ctx context.Context) map[string]int {
-	_, span := tracing.CreateSpan(ctx, "item-dao", "GetCounts")
+func (m *itemService) GetCounts(ctx context.Context) (map[string]int, error) {
+	_, span := warehouse.CreateSpan(ctx, "itemService", "GetCounts")
 	defer span.End()
 
 	counts := make(map[string]int)
@@ -99,21 +94,21 @@ func (m *memStore) GetCounts(ctx context.Context) map[string]int {
 			counts[i.Name] += i.Quantity
 		}
 	}
-	return counts
+	return counts, nil
 }
 
-func (m *memStore) Search(ctx context.Context, item inventory.Item) (items []*inventory.Item) {
-	_, span := tracing.CreateSpan(ctx, "item-dao", "Search")
+func (m *itemService) Search(ctx context.Context, item warehouse.Item) (items []*warehouse.Item, err error) {
+	_, span := warehouse.CreateSpan(ctx, "itemService", "Search")
 	defer span.End()
 
-	items = m.findItemsMatching(ctx, item.Barcode, item.Name, item.Brand)
-	inventory.SortItems(items)
+	items = m.findItemsMatching(ctx, item)
+	warehouse.SortItems(items)
 
 	return
 }
 
-func (m *memStore) Update(ctx context.Context, item inventory.Item) error {
-	_, span := tracing.CreateSpan(ctx, "item-dao", "Update")
+func (m *itemService) Update(ctx context.Context, item warehouse.Item) (string, error) {
+	_, span := warehouse.CreateSpan(ctx, "itemService", "Update")
 	defer span.End()
 
 	span.SetAttributes(
@@ -122,13 +117,13 @@ func (m *memStore) Update(ctx context.Context, item inventory.Item) error {
 		label.Int("quantity", item.Quantity),
 	)
 
-	matching := m.findItemsMatching(ctx, item.Barcode, item.Name, item.Brand)
+	matching := m.findItemsMatching(ctx, item)
 	if len(matching) == 0 {
 		m.items = append(m.items, &item)
 	} else if len(matching) > 1 {
 		err := fmt.Errorf("Multiple Items Matched")
 		span.RecordError(err)
-		return err
+		return "", err
 	} else {
 		matching[0].Quantity = item.Quantity
 		if matching[0].Quantity < 0 {
@@ -136,5 +131,5 @@ func (m *memStore) Update(ctx context.Context, item inventory.Item) error {
 		}
 	}
 
-	return nil
+	return "", nil
 }

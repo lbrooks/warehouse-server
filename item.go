@@ -1,4 +1,4 @@
-package server
+package warehouse
 
 import (
 	"context"
@@ -11,6 +11,19 @@ type Item struct {
 	Brand    string `form:"brand" json:"brand"`
 	Name     string `form:"name" json:"name"`
 	Quantity int    `form:"quantity" json:"quantity" binding:"min=0"`
+}
+
+// Matches does this match the other
+func (i Item) Matches(o *Item) bool {
+	if o == nil {
+		return false
+	}
+
+	matchesBarcode := i.Barcode == "" || i.Barcode == o.Barcode
+	matchesBrand := i.Brand == "" || i.Brand == o.Brand
+	matchesName := i.Name == "" || i.Name == o.Name
+
+	return matchesBarcode && matchesBrand && matchesName
 }
 
 // SortItems sort a slice of items
