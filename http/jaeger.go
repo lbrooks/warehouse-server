@@ -1,7 +1,9 @@
 package http
 
 import (
+	"bytes"
 	"context"
+	"io/ioutil"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -12,8 +14,19 @@ import (
 // TracedRouteHandler function to handle request
 type TracedRouteHandler func(spanCtx context.Context, ginCtx *gin.Context) (interface{}, error)
 
-// JSONRoute wrapper to trace route
-func JSONRoute(tracerName, operationName string, handler TracedRouteHandler) func(*gin.Context) {
+func readAndReset(c *gin.Context) string {
+	var bodyBytes []byte
+
+	if c.Request.Body != nil {
+		bodyBytes, _ = ioutil.ReadAll(c.Request.Body)
+		c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+	}
+
+	return string(bodyBytes)
+}
+
+// TracedRoute wrapper to trace route
+func TracedRoute(tracerName, operationName string, handler TracedRouteHandler) func(*gin.Context) {
 	return func(c *gin.Context) {
 		sc, span := warehouse.CreateSpan(c, tracerName, operationName)
 		defer span.End()
@@ -22,6 +35,7 @@ func JSONRoute(tracerName, operationName string, handler TracedRouteHandler) fun
 			span.SetAttributes(label.String("request.header."+k, strings.Join(v, " | ")))
 		}
 		span.SetAttributes(label.String("request.query", c.Request.URL.RawQuery))
+		span.SetAttributes(label.String("request.body", readAndReset(c)))
 
 		msg, err := handler(sc, c)
 
