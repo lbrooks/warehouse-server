@@ -98,17 +98,17 @@ func (m *itemService) GetCounts(ctx context.Context) (map[string]int, error) {
 }
 
 func (m *itemService) Search(ctx context.Context, item warehouse.Item) (items []*warehouse.Item, err error) {
-	_, span := warehouse.CreateSpan(ctx, "itemService", "Search")
+	sc, span := warehouse.CreateSpan(ctx, "itemService", "Search")
 	defer span.End()
 
-	items = m.findItemsMatching(ctx, item)
+	items = m.findItemsMatching(sc, item)
 	warehouse.SortItems(items)
 
 	return
 }
 
 func (m *itemService) Update(ctx context.Context, item warehouse.Item) (string, error) {
-	_, span := warehouse.CreateSpan(ctx, "itemService", "Update")
+	sc, span := warehouse.CreateSpan(ctx, "itemService", "Update")
 	defer span.End()
 
 	span.SetAttributes(
@@ -117,7 +117,7 @@ func (m *itemService) Update(ctx context.Context, item warehouse.Item) (string, 
 		label.Int("quantity", item.Quantity),
 	)
 
-	matching := m.findItemsMatching(ctx, item)
+	matching := m.findItemsMatching(sc, item)
 	if len(matching) == 0 {
 		m.items = append(m.items, &item)
 	} else if len(matching) > 1 {

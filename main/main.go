@@ -11,6 +11,7 @@ import (
 	"github.com/lbrooks/warehouse/server"
 
 	"github.com/joho/godotenv"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 func init() {
@@ -25,6 +26,7 @@ func main() {
 	defer flush()
 
 	webServer := server.NewWebServer()
+	webServer.Use(otelgin.Middleware("warehouse-server"))
 	apiRoutes := webServer.Group("api")
 
 	itemService := memory.NewItemService(context.Background(), true)

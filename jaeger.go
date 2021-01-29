@@ -32,7 +32,7 @@ func getJaegerConfig() jaegerConfig {
 	return jaegerConfig{
 		url: jaegerEndpoint,
 		process: jaeger.Process{
-			ServiceName: "warehouse",
+			ServiceName: "warehouse-server",
 			Tags: []label.KeyValue{
 				label.String("host", host),
 			},
