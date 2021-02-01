@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 
+	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/trace/jaeger"
 	"go.opentelemetry.io/otel/label"
@@ -43,6 +44,8 @@ func getJaegerConfig() jaegerConfig {
 // InitializeJaeger creates a new trace provider instance and registers it as global trace provider.
 func InitializeJaeger() func() {
 	config := getJaegerConfig()
+
+	otel.SetTextMapPropagator(b3.B3{})
 
 	// Create and install Jaeger export pipeline.
 	flush, err := jaeger.InstallNewPipeline(
