@@ -19,7 +19,7 @@ type jaegerConfig struct {
 	process jaeger.Process
 }
 
-func getJaegerConfig() jaegerConfig {
+func getJaegerConfig(service string) jaegerConfig {
 	jaegerEndpoint := os.Getenv("JAEGER_URL")
 	if jaegerEndpoint == "" {
 		panic("JAEGER_URL is undefined")
@@ -33,7 +33,7 @@ func getJaegerConfig() jaegerConfig {
 	return jaegerConfig{
 		url: jaegerEndpoint,
 		process: jaeger.Process{
-			ServiceName: "warehouse-server",
+			ServiceName: service,
 			Tags: []label.KeyValue{
 				label.String("host", host),
 			},
@@ -42,8 +42,8 @@ func getJaegerConfig() jaegerConfig {
 }
 
 // InitializeJaeger creates a new trace provider instance and registers it as global trace provider.
-func InitializeJaeger() func() {
-	config := getJaegerConfig()
+func InitializeJaeger(service string) func() {
+	config := getJaegerConfig(service)
 
 	otel.SetTextMapPropagator(b3.B3{})
 

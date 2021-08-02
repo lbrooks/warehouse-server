@@ -10,6 +10,7 @@ import (
 	"github.com/lbrooks/warehouse/memory"
 	"github.com/lbrooks/warehouse/server"
 
+	"github.com/gin-contrib/static"
 	"github.com/joho/godotenv"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
@@ -26,6 +27,7 @@ func main() {
 	defer flush()
 
 	webServer := server.NewWebServer()
+	webServer.Use(static.Serve("/", static.LocalFile("/Users/lawrence/projects/inv-client-react/build", false)))
 	webServer.Use(otelgin.Middleware("warehouse-server"))
 	apiRoutes := webServer.Group("api")
 
